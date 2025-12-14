@@ -3,7 +3,7 @@
 
 benchmark:
   # Default target URL for Open WebUI instance
-  target_url: "http://localhost:3000"
+  target_url: "http://localhost:8080"
   
   # Default timeout for HTTP requests (seconds)
   request_timeout: 30

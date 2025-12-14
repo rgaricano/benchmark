@@ -24,8 +24,24 @@ This benchmark suite is designed to:
 ```bash
 cd benchmark
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -e .
+```
+
+### Configuration
+
+Copy the example environment file and configure your admin credentials:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your Open WebUI admin credentials:
+
+```dotenv
+OPEN_WEBUI_URL=http://localhost:8080
+ADMIN_USER_EMAIL=your-admin@example.com
+ADMIN_USER_PASSWORD=your-password
 ```
 
 ### Running Benchmarks
@@ -112,8 +128,10 @@ Configuration files are located in `config/`:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `BENCHMARK_TARGET_URL` | Open WebUI URL | `http://localhost:3000` |
-| `OPEN_WEBUI_PORT` | Port for Docker container | `3000` |
+| `OPEN_WEBUI_URL` | Open WebUI URL for benchmarking | `http://localhost:8080` |
+| `ADMIN_USER_EMAIL` | Admin user email (required) | - |
+| `ADMIN_USER_PASSWORD` | Admin user password (required) | - |
+| `OPEN_WEBUI_PORT` | Port for Docker container | `8080` |
 | `CPU_LIMIT` | CPU limit for container | `2.0` |
 | `MEMORY_LIMIT` | Memory limit for container | `8g` |
 
