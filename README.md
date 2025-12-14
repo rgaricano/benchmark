@@ -23,6 +23,8 @@ This benchmark suite is designed to:
 
 ```bash
 cd benchmark
+python -m venv .venv
+source .venv/bin/activate
 pip install -e .
 ```
 

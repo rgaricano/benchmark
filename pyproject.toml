@@ -14,6 +14,7 @@ dependencies = [
     "python-socketio>=5.13.0", # WebSocket client (already in Open WebUI)
     "pydantic>=2.11.0",        # Data validation (already in Open WebUI)
     "PyYAML>=6.0",             # YAML parsing (already in Open WebUI via dependencies)
+    "python-dotenv>=1.0.0",    # Environment file loading (already in Open WebUI)
     
     # Benchmark-specific additions
     "locust>=2.32.0",          # Load testing framework
