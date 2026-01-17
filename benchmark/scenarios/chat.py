@@ -11,6 +11,7 @@ import time
 from typing import Optional, List
 
 from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
 from benchmark.core.base import BaseBenchmark
 from benchmark.core.config import BenchmarkConfig
@@ -107,14 +108,30 @@ class ChatAPIBenchmark(BaseBenchmark):
         
         user_count = chat_config.max_concurrent_users
         
-        # Create benchmark users
-        self._test_clients = await self._client_pool.create_benchmark_users(
-            admin_client=self._admin_client,
-            count=user_count,
-            email_pattern="chat_benchmark_{n}@test.local",
-            password="chat_benchmark_pass_123",
-            name_pattern="Chat Benchmark User {n}",
-        )
+        # Create benchmark users with progress display
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            console=console,
+            transient=True,
+        ) as progress:
+            task = progress.add_task(f"Creating {user_count} users...", total=user_count * 2)
+            
+            def update_progress(current: int, total: int):
+                progress.update(task, completed=current)
+            
+            self._test_clients = await self._client_pool.create_benchmark_users(
+                admin_client=self._admin_client,
+                count=user_count,
+                email_pattern="chat_benchmark_{n}@test.local",
+                password="chat_benchmark_pass_123",
+                name_pattern="Chat Benchmark User {n}",
+                progress_callback=update_progress,
+            )
+        
+        console.print(f"[green]✓[/green] Created {len(self._test_clients)} users")
     
     async def run(self) -> BenchmarkResult:
         """
@@ -145,6 +162,21 @@ class ChatAPIBenchmark(BaseBenchmark):
         # Track completed requests
         completed = 0
         errors = 0
+        
+        # Progress bar for tracking requests
+        progress = Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            console=console,
+        )
+        progress.start()
+        task = progress.add_task("Running requests...", total=total_requests)
+        
+        def update_status():
+            progress.update(task, completed=completed + errors, 
+                          description=f"Completed: {completed} | Errors: {errors}")
         
         async def run_user_session(client: OpenWebUIClient, user_num: int):
             """Run chat requests for a single user."""
@@ -180,6 +212,7 @@ class ChatAPIBenchmark(BaseBenchmark):
                         },
                     )
                     completed += 1
+                    update_status()
                     
                 except Exception as e:
                     metrics.record_streaming_timing(
@@ -196,6 +229,7 @@ class ChatAPIBenchmark(BaseBenchmark):
                         },
                     )
                     errors += 1
+                    update_status()
                 
                 # Small delay between requests from same user
                 await asyncio.sleep(0.1)
@@ -210,8 +244,9 @@ class ChatAPIBenchmark(BaseBenchmark):
         
         metrics.stop()
         
-        # Show summary
-        console.print(f"\n[green]Completed: {completed}[/green] | [red]Errors: {errors}[/red]")
+        # Finish progress bar
+        progress.update(task, description="Complete!", completed=total_requests)
+        progress.stop()
         
         return metrics.get_result(
             benchmark_name=self.name,
