@@ -17,6 +17,7 @@ from benchmark.core.config import load_config, ConfigLoader
 from benchmark.core.runner import BenchmarkRunner
 from benchmark.scenarios.channels import ChannelAPIBenchmark, ChannelWebSocketBenchmark
 from benchmark.scenarios.chat import ChatAPIBenchmark
+from benchmark.scenarios.chat_ui import ChatUIBenchmark
 from benchmark.auth import (
     ensure_admin_authenticated,
     AuthenticationError,
@@ -132,6 +133,7 @@ def list_benchmarks():
         ("channels-api", ChannelAPIBenchmark),
         ("channels-ws", ChannelWebSocketBenchmark),
         ("chat-api", ChatAPIBenchmark),
+        ("chat-ui", ChatUIBenchmark),
     ]
     
     for cmd, benchmark_class in benchmarks:
@@ -246,6 +248,47 @@ async def run_chat_api_benchmark(
     return result
 
 
+async def run_chat_ui_benchmark(
+    profile_id: str = "default",
+    target_url: Optional[str] = None,
+    max_users: Optional[int] = None,
+    model: Optional[str] = None,
+    headless: bool = True,
+    slow_mo: int = 0,
+    output_dir: Optional[str] = None,
+):
+    """Run the chat UI concurrency benchmark using browser automation."""
+    # Load config with overrides
+    overrides = {}
+    if target_url:
+        overrides["target_url"] = target_url
+    
+    config = load_config(profile_id, overrides=overrides)
+    
+    if max_users:
+        config.chat.max_concurrent_users = max_users
+    
+    if model:
+        config.chat.model = model
+    
+    # Browser-specific settings
+    config.browser.headless = headless
+    config.browser.slow_mo = slow_mo
+    
+    # Create runner
+    runner = BenchmarkRunner(
+        config=config,
+        profile_id=profile_id,
+        output_dir=Path(output_dir) if output_dir else None,
+    )
+    
+    # Run benchmark
+    result = await runner.run_benchmark(ChatUIBenchmark)
+    runner.display_final_summary()
+    
+    return result
+
+
 async def run_all_benchmarks(
     profile_id: str = "default",
     target_url: Optional[str] = None,
@@ -336,7 +379,7 @@ def main():
         "benchmark",
         nargs="?",
         default="all",
-        choices=["all", "channels-api", "channels-ws", "chat-api"],
+        choices=["all", "channels-api", "channels-ws", "chat-api", "chat-ui"],
         help="Benchmark to run (default: all)",
     )
     run_parser.add_argument(
@@ -360,11 +403,30 @@ def main():
     )
     run_parser.add_argument(
         "--model",
-        help="Model to use for chat-api benchmark (default: gpt-4o-mini)",
+        help="Model to use for chat benchmarks (default: gpt-4o-mini)",
     )
     run_parser.add_argument(
         "-o", "--output",
         help="Output directory for results",
+    )
+    
+    # Browser-specific options for chat-ui
+    run_parser.add_argument(
+        "--headless",
+        action="store_true",
+        default=True,
+        help="Run browser in headless mode (default: True)",
+    )
+    run_parser.add_argument(
+        "--headed",
+        action="store_true",
+        help="Run browser with visible window (for debugging)",
+    )
+    run_parser.add_argument(
+        "--slow-mo",
+        type=int,
+        default=0,
+        help="Slow down browser operations by ms (for debugging)",
     )
     
     args = parser.parse_args()
@@ -384,6 +446,9 @@ def main():
             auth_parser.print_help()
     elif args.command == "run":
         try:
+            # Determine headless mode (--headed overrides --headless)
+            headless = not getattr(args, 'headed', False)
+            
             if args.benchmark == "all":
                 asyncio.run(run_all_benchmarks(
                     profile_id=args.profile,
@@ -411,6 +476,16 @@ def main():
                     target_url=args.url,
                     max_users=args.max_users,
                     model=args.model,
+                    output_dir=args.output,
+                ))
+            elif args.benchmark == "chat-ui":
+                asyncio.run(run_chat_ui_benchmark(
+                    profile_id=args.profile,
+                    target_url=args.url,
+                    max_users=args.max_users,
+                    model=args.model,
+                    headless=headless,
+                    slow_mo=getattr(args, 'slow_mo', 0),
                     output_dir=args.output,
                 ))
             else:

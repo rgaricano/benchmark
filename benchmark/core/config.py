@@ -103,6 +103,17 @@ class ChatBenchmarkConfig(BaseModel):
     ])
 
 
+class BrowserBenchmarkConfig(BaseModel):
+    """Browser-based UI benchmark configuration."""
+    headless: bool = True  # Run browser without visible window
+    slow_mo: int = 0  # Slow down operations by ms (for debugging)
+    viewport_width: int = 1280
+    viewport_height: int = 720
+    browser_timeout: float = 30000  # Timeout in milliseconds
+    screenshot_on_error: bool = False  # Take screenshot when errors occur
+    use_isolated_browsers: bool = False  # Use separate browser instances vs contexts
+
+
 class OutputConfig(BaseModel):
     """Output configuration for benchmark results."""
     results_dir: str = "results"
@@ -125,6 +136,7 @@ class BenchmarkConfig(BaseModel):
     thresholds: ThresholdsConfig = Field(default_factory=ThresholdsConfig)
     channels: ChannelBenchmarkConfig = Field(default_factory=ChannelBenchmarkConfig)
     chat: ChatBenchmarkConfig = Field(default_factory=ChatBenchmarkConfig)
+    browser: BrowserBenchmarkConfig = Field(default_factory=BrowserBenchmarkConfig)
     
     # Compute profile
     compute_profile: Optional[ComputeProfile] = None

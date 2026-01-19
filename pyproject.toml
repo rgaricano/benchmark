@@ -23,6 +23,7 @@ dependencies = [
     "psutil>=5.9.0",           # System monitoring (already in Open WebUI)
     "pandas>=2.2.0",           # Data analysis (already in Open WebUI)
     "matplotlib>=3.8.0",       # Plotting results
+    "playwright>=1.40.0",      # Browser automation for UI benchmarks
 ]
 
 [project.optional-dependencies]
