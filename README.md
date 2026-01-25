@@ -60,22 +60,43 @@ cd docker
 2. **Run the benchmark:**
 
 ```bash
-# Run all benchmarks
-owb run all
+# Run the default benchmark (chat-ui with auto-scaling), which automatically finds max sustainable users based on P95 response time
+owb run
 
-# Run specific benchmarks
-owb run chat-api -m 50          # API-based chat benchmark
-owb run chat-ui -m 50 --headless # Browser-based chat benchmark
-owb run channels-api -m 50      # Channel API concurrency
-owb run channels-ws -m 50       # Channel WebSocket benchmark
+# Set a custom response time threshold (default: 1000ms)
+owb run --response-threshold 2000
 
-# Run with options
-owb run chat-ui -m 10 --headed --slow-mo 500  # Visual debugging
-owb run chat-api -u http://localhost:3000     # Custom URL
-owb run channels-api -p cloud_medium          # Specific compute profile
+# Run with a fixed number of users (disables auto-scaling)
+owb run -m 50
+
+# Run with visible browsers for debugging
+owb run --headed
+owb run --headed --slow-mo 500  # Slow down for visual inspection
 ```
 
-3. **View results:**
+3. **List available benchmarks:**
+
+```bash
+owb list
+```
+
+4. **Run other benchmarks:**
+
+```bash
+# API-based chat benchmark (no browser)
+owb run chat-api -m 50
+
+# Channel API concurrency
+owb run channels-api -m 50
+
+# Channel WebSocket benchmark  
+owb run channels-ws -m 50
+
+# Run all benchmarks
+owb run all
+```
+
+5. **View results:**
 
 Results are saved to `results/` in JSON, CSV, and text formats.
 
@@ -114,10 +135,20 @@ Tests concurrent AI chat performance via the OpenAI-compatible API:
 owb run chat-api -m 50 --model gpt-4o-mini
 ```
 
-### Chat UI Concurrency (`chat-ui`)
+### Chat UI Concurrency (`chat-ui`) - Default
 
-Tests concurrent AI chat performance through actual browser UI using Playwright:
+Tests concurrent AI chat performance through actual browser UI using Playwright. **This is the default benchmark** and runs in auto-scale mode by default.
 
+**Auto-scale mode (default):**
+- Progressively adds users until P95 response time exceeds threshold
+- Automatically finds maximum sustainable concurrent users
+- Reports performance at each level tested
+
+**Fixed mode:**
+- Test with a specific number of concurrent users
+- Enabled by specifying `--max-users` / `-m`
+
+**How it works:**
 - Launches real Chromium browser instances (or contexts)
 - Each browser logs in as a different user
 - Sends chat messages and waits for streaming responses
@@ -127,14 +158,17 @@ Tests concurrent AI chat performance through actual browser UI using Playwright:
 **Usage:**
 
 ```bash
-# Run in headless mode (default)
-owb run chat-ui -m 50 --model gpt-4o-mini
+# Auto-scale mode (default) - finds max sustainable users
+owb run
+owb run --response-threshold 2000  # Custom threshold (default: 1000ms)
 
-# Run with visible browsers for debugging
-owb run chat-ui -m 10 --headed
+# Fixed mode - test specific user count
+owb run -m 50
+owb run -m 50 --model gpt-4o-mini
 
-# Slow down operations for visual inspection
-owb run chat-ui -m 5 --headed --slow-mo 500
+# Debugging options
+owb run --headed                    # Visible browsers
+owb run --headed --slow-mo 500      # Slow down for inspection
 ```
 
 **Configuration:**
@@ -281,6 +315,31 @@ result = metrics.get_result("My Benchmark")
 - `*.json` - Detailed results for each benchmark run
 - `benchmark_results_*.csv` - Combined results in CSV format
 - `summary_*.txt` - Human-readable summary
+
+### Interpreting Chat UI Benchmark Results
+
+The chat-ui benchmark in auto-scale mode reports:
+
+- **max_sustainable_users**: Maximum users where P95 stays under threshold
+- **levels_tested**: Performance data at each user count level
+- **% of Threshold**: How close P95 is to the configured limit
+
+Example auto-scale result:
+
+```
+                   Auto-Scale Results                    
+┏━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━┓
+┃ Users ┃ P95 (ms) ┃ Avg (ms) ┃ % of Threshold ┃ Errors ┃
+┡━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━┩
+│    10 │      731 │      662 │            37% │   0.0% │
+│    30 │      881 │      748 │            44% │   0.0% │
+│    50 │     1178 │     1064 │            59% │   0.0% │
+│    70 │     2133 │     1854 │           107% │   0.8% │
+└───────┴──────────┴──────────┴────────────────┴────────┘
+
+P95 Threshold: 2000ms
+Maximum Sustainable Users: 50
+```
 
 ### Interpreting Channel Benchmark Results
 
