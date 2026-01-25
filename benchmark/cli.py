@@ -255,17 +255,29 @@ async def run_chat_ui_benchmark(
     model: Optional[str] = None,
     headless: bool = True,
     slow_mo: int = 0,
+    auto_scale: bool = False,
+    response_threshold: int = 1000,
+    step_size: Optional[int] = None,
     output_dir: Optional[str] = None,
 ):
     """Run the chat UI concurrency benchmark using browser automation."""
-    # Load config with overrides
     overrides = {}
     if target_url:
         overrides["target_url"] = target_url
     
     config = load_config(profile_id, overrides=overrides)
     
-    if max_users:
+    # Auto-scale mode settings
+    config.chat.auto_scale = auto_scale
+    config.chat.response_time_threshold_ms = response_threshold
+    
+    if step_size:
+        config.chat.user_step_size = step_size
+    
+    if auto_scale:
+        # In auto-scale mode, max_users becomes the cap (default 200)
+        config.chat.max_user_cap = max_users if max_users else 200
+    elif max_users:
         config.chat.max_concurrent_users = max_users
     
     if model:
@@ -378,9 +390,9 @@ def main():
     run_parser.add_argument(
         "benchmark",
         nargs="?",
-        default="all",
+        default="chat-ui",
         choices=["all", "channels-api", "channels-ws", "chat-api", "chat-ui"],
-        help="Benchmark to run (default: all)",
+        help="Benchmark to run (default: chat-ui)",
     )
     run_parser.add_argument(
         "-p", "--profile",
@@ -427,6 +439,14 @@ def main():
         type=int,
         default=0,
         help="Slow down browser operations by ms (for debugging)",
+    )
+    
+    # Auto-scaling options for chat-ui (auto-scale is default unless --max-users is specified)
+    run_parser.add_argument(
+        "--response-threshold",
+        type=int,
+        default=1000,
+        help="P95 response time threshold in ms for auto-scaling (default: 1000)",
     )
     
     args = parser.parse_args()
@@ -479,6 +499,8 @@ def main():
                     output_dir=args.output,
                 ))
             elif args.benchmark == "chat-ui":
+                # Auto-scale by default, fixed mode if --max-users is specified
+                auto_scale = args.max_users is None
                 asyncio.run(run_chat_ui_benchmark(
                     profile_id=args.profile,
                     target_url=args.url,
@@ -486,6 +508,9 @@ def main():
                     model=args.model,
                     headless=headless,
                     slow_mo=getattr(args, 'slow_mo', 0),
+                    auto_scale=auto_scale,
+                    response_threshold=getattr(args, 'response_threshold', 1000),
+                    step_size=args.step_size,
                     output_dir=args.output,
                 ))
             else:

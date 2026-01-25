@@ -76,10 +76,16 @@ class ChannelBenchmarkConfig(BaseModel):
 
 class ChatBenchmarkConfig(BaseModel):
     """AI Chat benchmark configuration."""
-    model: str = "gpt-4o-mini"  # Default to cost-efficient model
+    model: str = "gpt-4o-mini"
     max_concurrent_users: int = 10
     requests_per_user: int = 5
     sustain_time: int = 60  # seconds
+    
+    # Auto-scaling configuration
+    auto_scale: bool = False  # Enable auto-scaling mode
+    user_step_size: int = 10  # Initial users to add per iteration
+    response_time_threshold_ms: int = 1000  # P95 threshold to stop scaling
+    max_user_cap: int = 200  # Maximum users to create
     
     # System prompt for cache optimization (identical across all requests)
     system_prompt: str = (
