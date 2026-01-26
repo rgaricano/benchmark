@@ -178,24 +178,34 @@ class BenchmarkRunner:
         
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         
-        # Write JSON for each result
+        # Create subfolder for this benchmark run: results/{benchmark_name}/{timestamp}/
         for result in results:
-            json_path = self.results_writer.write_json(result)
+            # Extract base benchmark name 
+            base_name = result.benchmark_name
+            if '(' in base_name:
+                base_name = base_name.split('(')[0].strip()
+            
+            # Sanitize for folder name
+            benchmark_folder = base_name.replace(' ', '_').lower()
+            benchmark_folder = ''.join(c for c in benchmark_folder if c.isalnum() or c == '_')
+            
+            run_dir = self.output_dir / benchmark_folder / timestamp
+            run_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Create a writer for this specific run directory
+            run_writer = ResultsWriter(run_dir)
+            
+            # Write JSON
+            json_path = run_writer.write_json(result, filename="result.json")
             console.print(f"[dim]Results written to: {json_path}[/dim]")
         
-        # Write combined CSV
-        csv_path = self.results_writer.write_csv(
-            results, 
-            filename=f"benchmark_results_{timestamp}.csv"
-        )
-        console.print(f"[dim]CSV written to: {csv_path}[/dim]")
-        
-        # Write summary
-        summary_path = self.results_writer.write_summary(
-            results,
-            filename=f"summary_{timestamp}.txt"
-        )
-        console.print(f"[dim]Summary written to: {summary_path}[/dim]")
+        # Write combined CSV and summary to the run directory of the last result
+        if results:
+            csv_path = run_writer.write_csv(results, filename="results.csv")
+            console.print(f"[dim]CSV written to: {csv_path}[/dim]")
+            
+            summary_path = run_writer.write_summary(results, filename="summary.txt")
+            console.print(f"[dim]Summary written to: {summary_path}[/dim]")
     
     def display_final_summary(self) -> None:
         """Display a final summary of all benchmark results."""

@@ -98,7 +98,16 @@ owb run all
 
 5. **View results:**
 
-Results are saved to `results/` in JSON, CSV, and text formats.
+Results are organized by benchmark name and timestamp:
+
+```
+results/
+└── chat_ui_concurrency/
+    └── 20260126_014205/
+        ├── result.json    # Detailed benchmark data
+        ├── results.csv    # Tabular results
+        └── summary.txt    # Human-readable summary
+```
 
 ## Compute Profiles
 
@@ -383,7 +392,7 @@ benchmark/
 │   └── cli.py          # Command-line interface
 ├── config/             # Configuration files
 ├── docker/             # Docker Compose for benchmarking
-└── results/            # Benchmark output (gitignored)
+└── results/            # Benchmark output organized by {benchmark}/{timestamp}/
 ```
 
 ## Dependencies
